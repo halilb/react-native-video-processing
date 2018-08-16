@@ -455,7 +455,6 @@ public class Trimmer {
     ReadableMap videoMetadata = getVideoRequiredMetadata(source, ctx);
     int videoWidth = videoMetadata.getInt("width");
     int videoHeight = videoMetadata.getInt("height");
-    int videoBitrate = videoMetadata.getInt("bitrate");
 
     int width = options.hasKey("width") ? (int)( options.getDouble("width") ) : 0;
     int height = options.hasKey("height") ? (int)( options.getDouble("height") ) : 0;
@@ -471,48 +470,32 @@ public class Trimmer {
       height = sizes.getInt("height");
     }
 
-    Double minimumBitrate = options.hasKey("minimumBitrate") ? options.getDouble("minimumBitrate") : null;
-    Double bitrateMultiplier = options.hasKey("bitrateMultiplier") ? options.getDouble("bitrateMultiplier") : 1.0;
     Boolean removeAudio = options.hasKey("removeAudio") ? options.getBoolean("removeAudio") : false;
-
-    Double averageBitrate = videoBitrate / bitrateMultiplier;
-
-    if (minimumBitrate != null) {
-      if (averageBitrate < minimumBitrate) {
-        averageBitrate = minimumBitrate;
-      }
-      if (videoBitrate < minimumBitrate) {
-        averageBitrate = videoBitrate * 1.0;
-      }
-    }
-
-    Log.d(LOG_TAG, "getVideoRequiredMetadata: averageBitrate - " + Double.toString(averageBitrate));
 
     final File tempFile = createTempFile("mp4", promise, ctx);
 
     ArrayList<String> cmd = new ArrayList<String>();
-    cmd.add("-y");
+
     cmd.add("-i");
     cmd.add(source);
-    cmd.add("-c:v");
+    cmd.add("-vcodec");
     cmd.add("libx264");
-    cmd.add("-b:v");
-    cmd.add(Double.toString(averageBitrate/1000)+"K");
-    cmd.add("-bufsize");
-    cmd.add(Double.toString(averageBitrate/2000)+"K");
-    if ( width != 0 && height != 0 ) {
-      cmd.add("-vf");
-      cmd.add("scale=" + Integer.toString(width) + ":" + Integer.toString(height));
-    }
-
+    cmd.add("-crf");
+    cmd.add("27");
     cmd.add("-preset");
-    cmd.add("ultrafast");
-    cmd.add("-pix_fmt");
-    cmd.add("yuv420p");
+    cmd.add("veryfast");
+    cmd.add("-c:a");
+    cmd.add("copy");
+
+    if ( width != 0 && height != 0 ) {
+      cmd.add("-s");
+      cmd.add(Integer.toString(width) + "x" + Integer.toString(height));
+    }
 
     if (removeAudio) {
       cmd.add("-an");
     }
+
     cmd.add(tempFile.getPath());
 
     executeFfmpegCommand(cmd, tempFile.getPath(), ctx, promise, "compress error", cb);
